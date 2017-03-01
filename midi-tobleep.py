@@ -8,8 +8,8 @@ parser.add_argument('-l', type=str, help='the length of the midi you would like 
 # Need an arguement to print to console
 args = parser.parse_args()
 bpm = 192
-spd_mod = 0.9
-oct_mod = 0.7
+spd_mod = 1
+oct_mod = 1
 
 
 def getTempo(temp):
@@ -17,7 +17,7 @@ def getTempo(temp):
 
 
 def getDuration(end, start):
-    return float(end - start) / float(bpm * spd_mod) / 8.0
+    return float(end - start) / float(bpm) / 8.0 * spd_mod
 
 
 def getFreq(row):
@@ -28,13 +28,13 @@ def midiNumToFreq(midiNumber):
     return 440 * pow(2, (int(midiNumber) - 69) / float(12)) * oct_mod
 
 
-def beepString(note, duration, lastnote):
+def beepString(note, duration, lastnote, delay=0):
     freq = str(midiNumToFreq(note))
     nlen = str(duration * 1000)
     if lastnote != 0:
-        return str(' -n ' + " -f " + freq + " -l " + nlen )
+        return str(' -D ' + str(delay * 1000) + ' -n ' + " -f " + freq + " -l " + nlen )
     else:
-        return str(" -f " + freq + " -l " + nlen )
+        return str(" -f " + freq + " -l " + nlen)
 
 
 
@@ -61,8 +61,13 @@ def buildBeep():
                     if note[0] == row[4]:
                         nodestack.pop(idx)
                         duration = getDuration(int(row[1]), int(note[1]))
-                        outfile.write(beepString(note[0], duration, lastnote))
-                        lastnote += 1
+                        if lastnote != note[1]:
+                            delay = getDuration(int(note[1]), int(lastnote))
+                        else:
+                            delay = 0.0
+                        outfile.write(beepString(note[0], duration, lastnote, delay))
+                        # the last played notes time
+                        lastnote = row[1]
     return
 
 
