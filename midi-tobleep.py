@@ -7,9 +7,11 @@ parser.add_argument('-l', type=str, help='the length of the midi you would like 
 # Need an arguement to supress beep
 # Need an arguement to print to console
 args = parser.parse_args()
-bpm = 192
-spd_mod = 1
+bpm = 120
+spd_mod = 0.65
 oct_mod = 1
+
+channel = '0'
 
 
 def getTempo(temp):
@@ -51,20 +53,32 @@ def buildBeep():
                 # handle Tempo messages
                 bpm = getTempo(row[3]);
                 print('BPM: ', bpm)
-            elif 'Note_on_c' in row[2]:
+            elif 'Note_on_c' in row[2] and channel in row[3]:
                 # starts a note and add to stack
-                nodestack.append([row[4], row[1]])
-
-            elif 'Note_off_c' in row[2]:
+                tmp = [row[4], row[1]]
+                # bei doppelten Noten, nimm die hoehere
+                if tmp in nodestack:
+                    old = nodestack.pop()
+                    if tmp[0] > old[0]:
+                        nodestack.append(old)
+                else:
+                    nodestack.append(tmp)
+            elif 'Note_off_c' in row[2] and channel in row[3]:
                 # Pop node from stack if it was used before
                 for idx, note in enumerate(nodestack):
                     if note[0] == row[4]:
                         nodestack.pop(idx)
                         duration = getDuration(int(row[1]), int(note[1]))
-                        if lastnote != note[1]:
+                        if lastnote < note[1]:
                             delay = getDuration(int(note[1]), int(lastnote))
                         else:
                             delay = 0.0
+                        if delay < 0:
+                            print "WRONG", delay, note[1]
+                            delay = 0
+                        if delay > 5:
+                           print "WRONG", delay, note[1]
+                           delay = 2
                         outfile.write(beepString(note[0], duration, lastnote, delay))
                         # the last played notes time
                         lastnote = row[1]
